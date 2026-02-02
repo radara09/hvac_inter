@@ -97,26 +97,32 @@ export async function generateQrPdf(siteName: string, units: ACRecord[]) {
   for (let i = 0; i < units.length; i++) {
     const unit = units[i];
 
-    // posisi cell saat ini (prediksi)
-    const x = margin + col * cellWidth;
-    const y = gridStartY + row * cellHeight;
+    // prediksi Y untuk cek pagination (x tidak dibutuhkan)
+    const predictedY = gridStartY + row * cellHeight;
 
-    // pagination aman
-    if (y + cellHeight > pageHeight - marginBottom) {
+    // pagination aman: kalau cell keluar area halaman → page baru
+    if (predictedY + cellHeight > pageHeight - marginBottom) {
       doc.addPage();
       drawHeader();
       col = 0;
       row = 0;
     }
 
-    // recalculation setelah reset page/row/col
+    // posisi cell aktual setelah kemungkinan reset page/row/col
     const cx = margin + col * cellWidth;
     const cy = gridStartY + row * cellHeight;
 
     // Generate QR
     try {
       const qrDataUrl = await QRCode.toDataURL(unit.id, { margin: 1, width: 200 });
-      doc.addImage(qrDataUrl, "PNG", cx + (cellWidth - qrSize) / 2, cy, qrSize, qrSize);
+      doc.addImage(
+        qrDataUrl,
+        "PNG",
+        cx + (cellWidth - qrSize) / 2,
+        cy,
+        qrSize,
+        qrSize
+      );
     } catch (err) {
       console.error("Failed to generate QR", err);
     }
@@ -131,24 +137,23 @@ export async function generateQrPdf(siteName: string, units: ACRecord[]) {
     const name = unit.assetCode;
     doc.text(name, cx + cellWidth / 2, cy + qrSize + 5, { align: "center" });
 
-    // === WORD WRAP LOCATION (gantikan logic substring + "...") ===
+    // === WORD WRAP LOCATION ===
     const locationText = unit.location ?? "";
     const maxTextWidth = cellWidth - 6; // padding kiri+kanan dalam cell
     const wrapped = doc.splitTextToSize(locationText, maxTextWidth);
 
-    const maxLines = 3; // ubah ke 3 kalau mau lebih banyak
+    const maxLines = 3; // maksimal baris lokasi
     const lines = wrapped.slice(0, maxLines);
 
-    const lineHeight = 4; // jarak antar baris untuk font size 8 (mm)
+    const lineHeight = 4; // cocok untuk font size 8
     const startTextY = cy + qrSize + 9;
 
-    // render setiap baris tetap rata tengah
     for (let li = 0; li < lines.length; li++) {
       doc.text(String(lines[li]), cx + cellWidth / 2, startTextY + li * lineHeight, {
         align: "center",
       });
     }
-    // ===========================================================
+    // =========================
 
     // advance grid
     col++;

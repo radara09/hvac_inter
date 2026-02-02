@@ -68,63 +68,72 @@ import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import type { ACRecord } from "../types";
 
-// load logo dari /public/logo.png -> url "/logo.png"
-async function loadPublicImageAsDataUrl(path: string): Promise<string | null> {
+// Load image + ambil ukuran asli
+async function loadImageWithSize(
+  path: string
+): Promise<{ dataUrl: string; width: number; height: number } | null> {
   try {
     const res = await fetch(path, { cache: "force-cache" });
     if (!res.ok) return null;
 
     const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    return {
+      dataUrl,
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+    };
   } catch {
     return null;
   }
 }
 
 export async function generateQrPdf(siteName: string, units: ACRecord[]) {
-  const doc = new jsPDF(); // A4 portrait, unit mm
+  const doc = new jsPDF(); // A4 portrait
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // === Margin & header ===
-  const margin = 6;
-  const headerY = 10;
-  const gridStartY = 16;
-  const marginBottom = 6;
+  // ===== Layout global =====
+  const margin = 8;
+  const headerY = 12;
+  const gridStartY = 18;
+  const marginBottom = 8;
 
   const cols = 4;
   const cellWidth = (pageWidth - margin * 2) / cols;
 
-  // === Grid height: isi halaman dengan 4 baris ===
   const rowsPerPage = 4;
   const availableHeight = pageHeight - gridStartY - marginBottom;
   const cellHeight = availableHeight / rowsPerPage;
 
-  // === Element sizes inside a cell ===
+  // ===== Element sizes =====
   const topPadding = 3;
-
-  const logoBoxH = 10;      // tinggi area logo
-  const logoMaxW = 16;      // max lebar logo (akan diskalakan)
-  const logoMaxH = 8;       // max tinggi logo (akan diskalakan)
-
+  const logoMaxHeight = 8; // mm → hanya scale DOWN
   const gapAfterLogo = 2;
 
-  const qrSize = 44;        // QR cukup besar, tapi tidak nabrak label
-
+  const qrSize = 44;
   const gapAfterQr = 4;
 
   const nameFontSize = 9;
   const locationFontSize = 8;
   const lineHeight = 4;
-  const maxLocationLines = 2; // biar tidak kebawah (bisa 3 kalau kamu mau)
+  const maxLocationLines = 2;
 
   // Load logo sekali
-  const logoDataUrl = await loadPublicImageAsDataUrl("/logo_only.png");
+  const logo = await loadImageWithSize("/logo.png");
 
   const drawHeader = () => {
     doc.setFontSize(16);
@@ -151,39 +160,46 @@ export async function generateQrPdf(siteName: string, units: ACRecord[]) {
     const cx = margin + col * cellWidth;
     const cy = gridStartY + row * cellHeight;
 
-    // Border untuk cutting (opsional)
+    // Border (optional)
     doc.setDrawColor(200);
     doc.rect(cx, cy, cellWidth, cellHeight);
 
-    // =========================
-    // 1) LOGO (di atas, center)
-    // =========================
-    const logoY = cy + topPadding;
+    // =================
+    // LOGO (ASLI, SCALE DOWN)
+    // =================
+    let currentY = cy + topPadding;
 
-    if (logoDataUrl) {
-      // logo di-center, diskalakan ke logoMaxW x logoMaxH
-      // (Kita tidak punya dimensi asli tanpa parser image,
-      // jadi kita gunakan fixed box. Ini aman dan rapi.)
-      const lw = logoMaxW;
-      const lh = logoMaxH;
-      const lx = cx + 3; // padding kiri
-    //   const lx = cx + (cellWidth - lw) / 2;
+    if (logo) {
+      const aspect = logo.width / logo.height;
 
-      doc.addImage(logoDataUrl, "PNG", lx, logoY, lw, lh);
+      const logoHeight = Math.min(logoMaxHeight, logo.height);
+      const logoWidth = logoHeight * aspect;
+
+      const logoX = cx + (cellWidth - logoWidth) / 2;
+
+      doc.addImage(
+        logo.dataUrl,
+        "PNG",
+        logoX,
+        currentY,
+        logoWidth,
+        logoHeight
+      );
+
+      currentY += logoHeight + gapAfterLogo;
     }
 
-    // =========================
-    // 2) QR (di bawah logo)
-    // =========================
-    const qrY = logoY + logoBoxH + gapAfterLogo;
+    // =================
+    // QR CODE
+    // =================
     const qrX = cx + (cellWidth - qrSize) / 2;
+    const qrY = currentY;
 
     try {
-      const qrPayload = unit.id; // nanti bisa diganti URL detail AC
-      const qrDataUrl = await QRCode.toDataURL(qrPayload, {
+      const qrDataUrl = await QRCode.toDataURL(unit.id, {
         margin: 1,
         width: 300,
-        errorCorrectionLevel: "M", // tidak perlu H karena tidak ada overlay logo
+        errorCorrectionLevel: "M",
       });
 
       doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
@@ -191,29 +207,36 @@ export async function generateQrPdf(siteName: string, units: ACRecord[]) {
       console.error("Failed to generate QR", err);
     }
 
-    // =========================
-    // 3) NAMA UNIT (center)
-    // =========================
+    currentY += qrSize + gapAfterQr;
+
+    // =================
+    // NAMA UNIT
+    // =================
     doc.setFontSize(nameFontSize);
-    const name = unit.assetCode ?? "";
-    const nameY = qrY + qrSize + gapAfterQr;
-    doc.text(String(name), cx + cellWidth / 2, nameY, { align: "center" });
+    doc.text(
+      String(unit.assetCode ?? ""),
+      cx + cellWidth / 2,
+      currentY,
+      { align: "center" }
+    );
 
-    // =========================
-    // 4) LOKASI (word wrap)
-    // =========================
+    currentY += 6;
+
+    // =================
+    // LOKASI (WRAP)
+    // =================
     doc.setFontSize(locationFontSize);
-    const locationText = unit.location ?? "";
-    const maxTextWidth = cellWidth - 6;
+    const wrapped = doc
+      .splitTextToSize(unit.location ?? "", cellWidth - 6)
+      .slice(0, maxLocationLines);
 
-    const wrapped = doc.splitTextToSize(locationText, maxTextWidth);
-    const lines = wrapped.slice(0, maxLocationLines);
-
-    const startTextY = nameY + 6;
-    for (let li = 0; li < lines.length; li++) {
-      doc.text(String(lines[li]), cx + cellWidth / 2, startTextY + li * lineHeight, {
-        align: "center",
-      });
+    for (let li = 0; li < wrapped.length; li++) {
+      doc.text(
+        String(wrapped[li]),
+        cx + cellWidth / 2,
+        currentY + li * lineHeight,
+        { align: "center" }
+      );
     }
 
     // advance grid
@@ -226,5 +249,3 @@ export async function generateQrPdf(siteName: string, units: ACRecord[]) {
 
   doc.save(`${siteName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_qrcodes.pdf`);
 }
-
-

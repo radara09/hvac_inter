@@ -19,8 +19,8 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "new-prod-ac",
-			"database_id": "c038079d-8323-46f1-8796-a351444f0912",
+			"database_name": "hvac_db_test",
+			"database_id": "f27a3e61-86e1-4860-bed6-c54fa23d3496",
 			"migrations_dir": "drizzle"
 		}
 	],

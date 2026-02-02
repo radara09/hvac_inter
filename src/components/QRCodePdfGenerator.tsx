@@ -60,3 +60,7 @@ export async function generateQrPdf(siteName: string, units: ACRecord[]) {
 
     doc.save(`${siteName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_qrcodes.pdf`);
 }
+
+
+
+

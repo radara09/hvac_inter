@@ -1,0 +1,23 @@
+# Env & secrets
+.dev.vars
+.env
+.env.*
+
+# Cloudflare / Wrangler
+.wrangler/
+
+# Database & dump
+*.sqlite
+*.db
+dump.sql
+
+# Node / Bun
+node_modules/
+bun.lockb
+
+# Build output
+dist/
+build/
+
+# OS & editor
+.DS_Store

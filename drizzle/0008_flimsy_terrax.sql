@@ -1,0 +1,11 @@
+-- CREATE TABLE `ac_types` (
+-- 	`id` text PRIMARY KEY NOT NULL,
+-- 	`name` text NOT NULL,
+-- 	`fields` text NOT NULL,
+-- 	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+-- 	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
+-- );
+-- --> statement-breakpoint
+-- ALTER TABLE `ac_units` ADD `parameters` text;--> statement-breakpoint
+-- ALTER TABLE `ac_units` ADD `sheet_name` text;--> statement-breakpoint
+-- ALTER TABLE `site_sheets` ADD `ac_type_id` text REFERENCES ac_types(id);

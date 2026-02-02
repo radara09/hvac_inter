@@ -1,0 +1,1 @@
+ALTER TABLE `sites` ADD `sheet_name` text;

@@ -149,7 +149,7 @@ export async function generateQrPdf(siteName: string, units: ACRecord[]) {
 
   // Logo: gunakan ukuran asli, hanya scale down by height
   const logoMaxHeight = 6; // mm
-  const gapAfterLogo = 1;
+  const gapAfterLogo = 2;
 
   const qrSize = 42; // mm
   const gapAfterQr = 4;

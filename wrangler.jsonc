@@ -4,7 +4,7 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "hvac-ibtp",
+	"name": "hvac-inter",
 	"main": "worker/index.ts",
 	"compatibility_date": "2025-11-05",
 	"assets": {

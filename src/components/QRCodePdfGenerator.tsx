@@ -133,7 +133,7 @@ export async function generateQrPdf(siteName: string, units: ACRecord[]) {
   const maxLocationLines = 2;
 
   // Load logo sekali
-  const logo = await loadImageWithSize("/logo.png");
+  const logo = await loadImageWithSize("/logo_only.png");
 
   const drawHeader = () => {
     doc.setFontSize(16);

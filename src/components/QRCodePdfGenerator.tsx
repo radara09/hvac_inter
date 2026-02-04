@@ -111,7 +111,7 @@ function getPublicBaseUrl() {
   return fromPublic || fromAuth || fromWindow || "";
 }
 
-function buildGuestMaintenanceUrl(acId: string, token?: string | null) {
+function buildMaintenanceUrl(acId: string) {
   const base = getPublicBaseUrl();
 
   if (!base) {
@@ -122,11 +122,8 @@ function buildGuestMaintenanceUrl(acId: string, token?: string | null) {
     return acId;
   }
 
-  const path = `${normalizeBaseUrl(base)}/guest/maintenance/${encodeURIComponent(acId)}`;
-  if (!token) {
-    return path;
-  }
-  return `${path}?token=${encodeURIComponent(token)}`;
+  // return `${normalizeBaseUrl(base)}/maintenance/${encodeURIComponent(acId)}`;
+  return `${normalizeBaseUrl(base)}/guest/maintenance/${encodeURIComponent(acId)}`;
 }
 
 export async function generateQrPdf(siteName: string, units: ACRecord[]) {
@@ -220,7 +217,7 @@ export async function generateQrPdf(siteName: string, units: ACRecord[]) {
     const qrY = currentY;
 
     try {
-      const qrPayload = buildGuestMaintenanceUrl(unit.id, unit.guestToken); // ✅ redirect URL (guest)
+      const qrPayload = buildMaintenanceUrl(unit.id); // ✅ redirect URL
       const qrDataUrl = await QRCode.toDataURL(qrPayload, {
         margin: 1,
         width: 300,

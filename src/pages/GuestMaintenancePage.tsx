@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { DepthCard } from "../components/DepthUI";
+import { authClient } from "../lib/auth-client";
 import type { ACRecord } from "../types";
 
 type PublicDetailResponse = {
@@ -31,10 +32,24 @@ function shouldHideParameter(key: string) {
 
 export function GuestMaintenancePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const session = authClient.useSession();
+  const user = session.data?.user;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<ACRecord | null>(null);
   const [siteName, setSiteName] = useState<string | null>(null);
+  const loginHref = useMemo(() => {
+    if (!id) return "/?redirect=/maintenance";
+    return `/?redirect=/maintenance/${encodeURIComponent(id)}`;
+  }, [id]);
+
+  useEffect(() => {
+    if (session.isPending) return;
+    if (user && id) {
+      navigate(`/maintenance/${encodeURIComponent(id)}`, { replace: true });
+    }
+  }, [id, navigate, session.isPending, user]);
 
   useEffect(() => {
     if (!id) {
@@ -74,6 +89,17 @@ export function GuestMaintenancePage() {
               <p className="text-xs uppercase text-(--depthui-muted)">Guest View</p>
               <h1 className="text-xl font-semibold text-[#1f1f1f]">Detail Unit AC</h1>
             </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <a
+              href={loginHref}
+              className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:opacity-80"
+            >
+              Login
+            </a>
+            <p className="text-xs text-(--depthui-muted)">
+              Login untuk membuka versi lengkap dan bisa update.
+            </p>
           </div>
           {loading && <p className="mt-4 text-sm text-(--depthui-muted)">Memuat detail AC...</p>}
           {error && <p className="mt-4 text-sm text-rose-500">{error}</p>}

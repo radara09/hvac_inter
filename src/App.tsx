@@ -209,6 +209,18 @@ function App() {
 
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  const getSafeRedirect = () => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirect");
+    if (!redirect) return null;
+    if (!redirect.startsWith("/")) return null;
+    if (redirect.startsWith("/maintenance/") || redirect === "/maintenance") {
+      return redirect;
+    }
+    return null;
+  };
+
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoginError(null);
@@ -218,6 +230,10 @@ function App() {
       setLoginError(error.message ?? "Gagal masuk");
     } else {
       resetLoginForm();
+      const redirect = getSafeRedirect();
+      if (redirect) {
+        window.location.href = redirect;
+      }
     }
   };
 

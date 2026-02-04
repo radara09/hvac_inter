@@ -75,7 +75,7 @@ const handleGetRecords = requireSession(async (c: Context<AppBindings>) => {
         .from(acUnits)
         .where(filters ?? undefined)
         .orderBy(desc(acUnits.updatedAt))
-        .limit(200);
+        .limit(15000);
 
     return c.json({ records: rows.map(serializeAcRecord) });
 });

@@ -518,10 +518,14 @@ const syncSingleSheet = async (
     options: SyncOptions,
     fieldConfig?: { label: string; key: string; cell: string; isId?: boolean; system?: boolean }[] | null
 ): Promise<SheetSyncResult> => {
+    const start = Date.now();
+    console.log(`[SheetsSync] syncSingleSheet:start siteId=${site.id} sheet=${sheetName}`);
+    const safeFieldConfig = Array.isArray(fieldConfig) ? fieldConfig : null;
+
     // Calculate required column count based on field config
     let minColumns = COLUMN_COUNT;
-    if (fieldConfig) {
-        fieldConfig.forEach(f => {
+    if (safeFieldConfig) {
+        safeFieldConfig.forEach(f => {
             const idx = getColumnIndex(f.cell);
             if (idx + 1 > minColumns) minColumns = idx + 1;
         });
@@ -530,10 +534,12 @@ const syncSingleSheet = async (
     // Logic from original syncSiteFromSheet starting from resolveSpreadsheetTarget
     const targetResult = await resolveSpreadsheetTarget(token, site.spreadsheetUrl ?? "", sheetName, minColumns);
     if (!targetResult.ok) {
+        console.log(`[SheetsSync] syncSingleSheet:end siteId=${site.id} sheet=${sheetName} status=error durationMs=${Date.now() - start}`);
         return targetResult;
     }
     const tableResult = await fetchSheetTable(token, targetResult.target);
     if (!tableResult.ok) {
+        console.log(`[SheetsSync] syncSingleSheet:end siteId=${site.id} sheet=${sheetName} status=error durationMs=${Date.now() - start}`);
         return tableResult;
     }
     const { header, rows } = tableResult.table;
@@ -546,10 +552,10 @@ const syncSingleSheet = async (
             if (!draft) return null;
 
             // Apply custom field mapping if config exists
-            if (fieldConfig && fieldConfig.length > 0) {
+            if (safeFieldConfig && safeFieldConfig.length > 0) {
                 const params: Record<string, string> = {};
-                const hasExplicitId = fieldConfig.some(field => field.isId);
-                fieldConfig.forEach(field => {
+                const hasExplicitId = safeFieldConfig.some(field => field.isId);
+                safeFieldConfig.forEach(field => {
                     const colIdx = getColumnIndex(field.cell);
                     if (colIdx >= 0 && colIdx < row.length) {
                         const val = (row[colIdx] || "").trim();
@@ -598,6 +604,7 @@ const syncSingleSheet = async (
             validationErrors: validationErrors.slice(0, 5),
         });
 
+        console.log(`[SheetsSync] syncSingleSheet:end siteId=${site.id} sheet=${sheetName} status=error durationMs=${Date.now() - start}`);
         return { ok: false, reason: detailedReason };
     }
 
@@ -708,12 +715,16 @@ const syncSingleSheet = async (
 };
 
 export const syncSiteFromSheet = async (env: AppBindings["Bindings"], site: SiteRow, options: SyncOptions = {}): Promise<SheetSyncResult> => {
+    const start = Date.now();
+    console.log(`[SheetsSync] syncSiteFromSheet:start siteId=${site.id} siteName=${site.name}`);
     const disabled = ensureIntegrationEnabled(env, site);
     if (disabled) {
+        console.log(`[SheetsSync] syncSiteFromSheet:end siteId=${site.id} status=disabled durationMs=${Date.now() - start}`);
         return disabled;
     }
     const tokenResult = await getAccessToken(env);
     if (!tokenResult.ok) {
+        console.log(`[SheetsSync] syncSiteFromSheet:end siteId=${site.id} status=error durationMs=${Date.now() - start}`);
         return tokenResult;
     }
 
@@ -737,7 +748,12 @@ export const syncSiteFromSheet = async (env: AppBindings["Bindings"], site: Site
         assignedSheets.forEach(s => {
             if (s.fields) {
                 try {
-                    sheetConfigMap.set(s.sheetName, JSON.parse(s.fields));
+                    const parsed = JSON.parse(s.fields);
+                    if (Array.isArray(parsed)) {
+                        sheetConfigMap.set(s.sheetName, parsed);
+                    } else {
+                        console.warn(`[SheetsSync] Invalid acType fields (not array). siteId=${site.id} sheet=${s.sheetName}`);
+                    }
                 } catch (e) {
                     console.error("Failed to parse acType fields", e);
                 }
@@ -786,10 +802,12 @@ export const syncSiteFromSheet = async (env: AppBindings["Bindings"], site: Site
         // All failed
         const reason = errors.join("; ");
         await summarize(env, site.id, { ok: false, reason });
+        console.log(`[SheetsSync] syncSiteFromSheet:end siteId=${site.id} status=error durationMs=${Date.now() - start}`);
         return { ok: false, reason };
     }
 
     await summarize(env, site.id, aggregated);
+    console.log(`[SheetsSync] syncSiteFromSheet:end siteId=${site.id} status=ok durationMs=${Date.now() - start}`);
     return aggregated;
 };
 

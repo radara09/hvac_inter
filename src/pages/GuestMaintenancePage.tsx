@@ -93,7 +93,7 @@ export function GuestMaintenancePage() {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <a
               href={loginHref}
-              className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:opacity-80"
+              className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-900 transition"
             >
               Login
             </a>

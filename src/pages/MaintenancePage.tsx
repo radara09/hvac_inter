@@ -241,6 +241,12 @@ export function MaintenancePage({
     });
   };
 
+  const serializePhotos = (photos: { url: string; label: string }[]) => {
+    return photos
+      .map(photo => `${photo.label}: ${photo.url}`)
+      .join("\n");
+  };
+
   const removePhoto = (index: number) => {
     setUploadedPhotos(prev => prev.filter((_, i) => i !== index));
   };
@@ -373,9 +379,16 @@ export function MaintenancePage({
             if (f.hidden) {
                 if (f.inputType === "signature" && finalSignatureUrl) {
                     nextParams[f.key] = finalSignatureUrl;
-                } else if (f.inputType === "image" && (form.photoUrl || uploadedPhotos[0]?.url)) {
-                    // Prefer main photoUrl if set, otherwise first uploaded photo
-                    nextParams[f.key] = form.photoUrl || uploadedPhotos[0]?.url;
+                } else if (f.inputType === "image") {
+                    const keyLower = f.key.toLowerCase();
+                    const isPhotoField = ["foto_url", "photo_url", "foto", "photo"].includes(keyLower);
+                    if (isPhotoField) {
+                        if (uploadedPhotos.length > 0) {
+                            nextParams[f.key] = serializePhotos(uploadedPhotos);
+                        } else if (form.photoUrl) {
+                            nextParams[f.key] = form.photoUrl;
+                        }
+                    }
                 }
             }
         });

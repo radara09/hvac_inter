@@ -1063,7 +1063,7 @@ export const syncRecordToSheet = async (
             } else if (key === "kondisi_filter" || key === "filter_condition") {
                 val = record.filterCondition ?? "";
             } else if (key === "foto_url" || key === "photo_url" || key === "foto" || key === "photo") {
-                val = record.photoUrl ?? "";
+                val = params.foto_url ?? params.photo_url ?? params.foto ?? params.photo ?? record.photoUrl ?? "";
             } else if (key === "tanda_tangan_url" || key === "signature_url" || key === "tanda_tangan" || key === "signature") {
                 val = record.signatureUrl ?? "";
             } else {

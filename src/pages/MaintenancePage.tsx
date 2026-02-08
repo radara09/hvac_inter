@@ -203,6 +203,7 @@ export function MaintenancePage({
   const selectedRecordId = selectedRecord?.id ?? null;
   const drawingPadRef = useRef<{ getStage: () => Konva.Stage | null; hasDrawing: () => boolean; clear: () => void }>(null);
   const [showQR, setShowQR] = useState(false);
+  const [openPhotoUrl, setOpenPhotoUrl] = useState<string | null>(null);
 
   // Multi-Photo State
   const [uploadedPhotos, setUploadedPhotos] = useState<{ url: string; label: string }[]>([]);
@@ -536,8 +537,9 @@ export function MaintenancePage({
                       <img
                         src={photo.url}
                         alt={photo.label || selectedRecord.assetCode}
-                        className="h-40 w-full object-cover"
+                        className="h-40 w-full cursor-zoom-in object-cover"
                         loading="lazy"
+                        onClick={() => setOpenPhotoUrl(photo.url)}
                       />
                       {photo.label && (
                         <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wide text-white">
@@ -552,9 +554,45 @@ export function MaintenancePage({
                   <img
                     src={selectedRecord.photoUrl}
                     alt={selectedRecord.assetCode}
-                    className="w-full rounded-2xl border border-black/10 object-cover"
+                    className="w-full cursor-zoom-in rounded-2xl border border-black/10 object-cover"
+                    loading="lazy"
+                    onClick={() => setOpenPhotoUrl(selectedRecord.photoUrl ?? null)}
                   />
                 )
+              )}
+              {openPhotoUrl && (
+                <div
+                  className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+                  onClick={() => setOpenPhotoUrl(null)}
+                >
+                  <div
+                    className="w-full max-w-5xl"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <a
+                        href={openPhotoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium text-white underline"
+                      >
+                        Buka di tab baru
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setOpenPhotoUrl(null)}
+                        className="rounded-lg bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20"
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                    <img
+                      src={openPhotoUrl}
+                      alt="Foto unit"
+                      className="max-h-[80vh] w-full rounded-2xl object-contain"
+                    />
+                  </div>
+                </div>
               )}
               {selectedRecord.signatureUrl && (
                 <div className="rounded-2xl border border-black/10 bg-white p-4">

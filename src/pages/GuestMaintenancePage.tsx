@@ -39,10 +39,38 @@ export function GuestMaintenancePage() {
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<ACRecord | null>(null);
   const [siteName, setSiteName] = useState<string | null>(null);
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   const loginHref = useMemo(() => {
     if (!id) return "/?redirect=/maintenance";
     return `/?redirect=/maintenance/${encodeURIComponent(id)}`;
   }, [id]);
+  const photosToShow = useMemo(() => {
+    if (!record) return null;
+    const params = record.parameters as Record<string, unknown> | null;
+    const rawValue = params
+      ? (params.foto_url ?? params.photo_url ?? params.foto ?? params.photo)
+      : null;
+    if (typeof rawValue === "string") {
+      const lines = rawValue.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const parsed = lines
+        .map(line => {
+          const [rawLabel, ...rest] = line.split(":");
+          if (!rest.length) {
+            return { label: "", url: rawLabel.trim() };
+          }
+          const url = rest.join(":").trim();
+          return { label: rawLabel.trim(), url };
+        })
+        .filter(entry => entry.url);
+      if (parsed.length > 0) {
+        return parsed;
+      }
+    }
+    if (record.photoUrl) {
+      return [{ url: record.photoUrl, label: "" }];
+    }
+    return null;
+  }, [record]);
 
   useEffect(() => {
     if (session.isPending) return;
@@ -135,14 +163,88 @@ export function GuestMaintenancePage() {
                 Terakhir Diperbarui:{" "}
                 {record.updatedAt ? new Date(record.updatedAt).toLocaleString("id-ID") : "-"}
               </p>
-              {record.photoUrl && (
+              {photosToShow && photosToShow.length > 0 && (
                 <div className="pt-2">
                   <p className="mb-2 text-xs uppercase text-(--depthui-muted)">Foto Unit</p>
-                  <img
-                    src={record.photoUrl}
-                    alt={record.assetCode}
-                    className="w-full rounded-2xl border border-black/10 object-cover"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    {photosToShow.map((photo, index) => (
+                      <div key={`${photo.url}-${index}`} className="relative overflow-hidden rounded-2xl border border-black/10">
+                        <img
+                          src={photo.url}
+                          alt={photo.label || record.assetCode}
+                          className="h-40 w-full cursor-zoom-in object-cover"
+                          loading="lazy"
+                          onClick={() => setOpenPhotoIndex(index)}
+                        />
+                        {photo.label && (
+                          <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wide text-white">
+                            {photo.label}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {openPhotoIndex !== null && photosToShow && (
+                <div
+                  className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+                  onClick={() => setOpenPhotoIndex(null)}
+                >
+                  {(() => {
+                    const safeIndex = Math.min(Math.max(openPhotoIndex, 0), Math.max(photosToShow.length - 1, 0));
+                    const currentPhoto = photosToShow[safeIndex];
+                    const hasPrev = safeIndex > 0;
+                    const hasNext = safeIndex < photosToShow.length - 1;
+                    if (!currentPhoto) return null;
+                    return (
+                      <div
+                        className="w-full max-w-5xl"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <a
+                            href={currentPhoto.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
+                          >
+                            Buka di tab baru
+                          </a>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => hasPrev && setOpenPhotoIndex(safeIndex - 1)}
+                              disabled={!hasPrev}
+                              className="rounded-lg border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Sebelumnya
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => hasNext && setOpenPhotoIndex(safeIndex + 1)}
+                              disabled={!hasNext}
+                              className="rounded-lg border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Berikutnya
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOpenPhotoIndex(null)}
+                              className="rounded-lg bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
+                            >
+                              Tutup
+                            </button>
+                          </div>
+                        </div>
+                        <img
+                          src={currentPhoto.url}
+                          alt={currentPhoto.label || "Foto unit"}
+                          className="max-h-[80vh] w-full rounded-2xl object-contain"
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
               {record.signatureUrl && (

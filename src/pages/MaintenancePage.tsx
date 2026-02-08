@@ -203,7 +203,7 @@ export function MaintenancePage({
   const selectedRecordId = selectedRecord?.id ?? null;
   const drawingPadRef = useRef<{ getStage: () => Konva.Stage | null; hasDrawing: () => boolean; clear: () => void }>(null);
   const [showQR, setShowQR] = useState(false);
-  const [openPhotoUrl, setOpenPhotoUrl] = useState<string | null>(null);
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
 
   // Multi-Photo State
   const [uploadedPhotos, setUploadedPhotos] = useState<{ url: string; label: string }[]>([]);
@@ -539,7 +539,7 @@ export function MaintenancePage({
                         alt={photo.label || selectedRecord.assetCode}
                         className="h-40 w-full cursor-zoom-in object-cover"
                         loading="lazy"
-                        onClick={() => setOpenPhotoUrl(photo.url)}
+                        onClick={() => setOpenPhotoIndex(index)}
                       />
                       {photo.label && (
                         <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[10px] uppercase tracking-wide text-white">
@@ -556,42 +556,72 @@ export function MaintenancePage({
                     alt={selectedRecord.assetCode}
                     className="w-full cursor-zoom-in rounded-2xl border border-black/10 object-cover"
                     loading="lazy"
-                    onClick={() => setOpenPhotoUrl(selectedRecord.photoUrl ?? null)}
+                    onClick={() => setOpenPhotoIndex(0)}
                   />
                 )
               )}
-              {openPhotoUrl && (
+              {openPhotoIndex !== null && (
                 <div
                   className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
-                  onClick={() => setOpenPhotoUrl(null)}
+                  onClick={() => setOpenPhotoIndex(null)}
                 >
+                  {(() => {
+                    const modalPhotos = photosToShow && photosToShow.length > 0
+                      ? photosToShow
+                      : (selectedRecord.photoUrl ? [{ url: selectedRecord.photoUrl, label: "" }] : []);
+                    const safeIndex = Math.min(Math.max(openPhotoIndex, 0), Math.max(modalPhotos.length - 1, 0));
+                    const currentPhoto = modalPhotos[safeIndex];
+                    const hasPrev = safeIndex > 0;
+                    const hasNext = safeIndex < modalPhotos.length - 1;
+                    if (!currentPhoto) return null;
+                    return (
                   <div
                     className="w-full max-w-5xl"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <div className="mb-3 flex items-center justify-between">
                       <a
-                        href={openPhotoUrl}
+                        href={currentPhoto.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-medium text-white underline"
+                        className="rounded-lg bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
                       >
                         Buka di tab baru
                       </a>
-                      <button
-                        type="button"
-                        onClick={() => setOpenPhotoUrl(null)}
-                        className="rounded-lg bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20"
-                      >
-                        Tutup
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => hasPrev && setOpenPhotoIndex(safeIndex - 1)}
+                          disabled={!hasPrev}
+                          className="rounded-lg border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Sebelumnya
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => hasNext && setOpenPhotoIndex(safeIndex + 1)}
+                          disabled={!hasNext}
+                          className="rounded-lg border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Berikutnya
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOpenPhotoIndex(null)}
+                          className="rounded-lg bg-white px-3 py-1 text-xs font-semibold text-black hover:bg-white/90"
+                        >
+                          Tutup
+                        </button>
+                      </div>
                     </div>
                     <img
-                      src={openPhotoUrl}
-                      alt="Foto unit"
+                      src={currentPhoto.url}
+                      alt={currentPhoto.label || "Foto unit"}
                       className="max-h-[80vh] w-full rounded-2xl object-contain"
                     />
                   </div>
+                    );
+                  })()}
                 </div>
               )}
               {selectedRecord.signatureUrl && (
